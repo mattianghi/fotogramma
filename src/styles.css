@@ -271,7 +271,7 @@ em { font-style: italic; }
 .detail-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; color: var(--text-2); font-size: 13.5px; }
 .detail-titles .kicker a:hover { text-decoration: underline; }
 .tagline { font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--text-2); margin: 12px 0 0; }
-.score-ring { position: absolute; right: var(--gutter); top: 96px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 99px; background: rgba(10,10,13,.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.score-ring { position: absolute; right: var(--gutter); top: calc(env(safe-area-inset-top) + 8px); width: 56px; height: 56px; display: grid; place-items: center; border-radius: 99px; background: rgba(10,10,13,.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .score-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
 .score-ring circle { fill: none; stroke-width: 4; }
 .score-ring .track { stroke: rgba(255,255,255,.12); }

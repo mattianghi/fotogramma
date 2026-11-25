@@ -21,7 +21,7 @@ export interface MediaSummary {
   poster_path: string | null; backdrop_path: string | null; profile_path?: string | null;
   release_date?: string; first_air_date?: string; vote_average?: number; overview?: string;
   genre_ids?: number[]; known_for_department?: string; known_for?: MediaSummary[];
-  character?: string; job?: string; episode_count?: number; popularity?: number;
+  character?: string; job?: string; episode_count?: number; popularity?: number; vote_count?: number;
 }
 
 export interface MovieDetail extends MediaSummary {

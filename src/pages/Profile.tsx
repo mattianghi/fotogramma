@@ -24,7 +24,7 @@ export default function Profile() {
     const movies = all.filter((e) => e.type === 'movie' && e.watched);
     const eps = Object.values(episodes).filter((e) => e.watchedAt);
     const shows = new Set(Object.keys(episodes).filter((k) => episodes[k].watchedAt).map((k) => k.split(':')[1]));
-    all.filter((e) => e.type === 'tv' && e.watched).forEach((e) => shows.add(String(e.id)));
+    all.filter((e) => e.type === 'tv' && (e.watched || e.rating)).forEach((e) => shows.add(String(e.id)));
     const minutes = movies.reduce((a, e) => a + (e.runtime || 110), 0) + eps.reduce((a, e) => a + (e.runtime || 45), 0);
     const ratings = [...all.map((e) => e.rating), ...Object.values(episodes).map((e) => e.rating)].filter(Boolean) as number[];
     const dist = Array.from({ length: 10 }, (_, i) => all.filter((e) => e.rating === (i + 1) / 2).length);

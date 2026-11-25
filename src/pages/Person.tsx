@@ -8,6 +8,13 @@ import { ErrorBox, Img, PosterCard, Rail, Segmented, toast } from '../components
 import { Icon } from '../components/Icon';
 import { actions, useStore } from '../lib/store';
 
+// talk show, notiziari, reality e apparizioni "come sé stesso" non sono ruoli
+const NON_FICTION = [10763, 10764, 10767];
+const isAppearance = (c: MediaSummary) =>
+  /^(self|himself|herself|themselves)\b|\(voice\)?\s*-?\s*self|\bguest\b|\bhost\b/i.test(c.character ?? '') ||
+  (c.genre_ids ?? []).some((g) => NON_FICTION.includes(g)) ||
+  (c.media_type === 'movie' && (c.genre_ids ?? []).includes(99) && /self/i.test(c.character ?? ''));
+
 const dept: Record<string, string> = { Acting: 'Attore / Attrice', Directing: 'Regia', Writing: 'Sceneggiatura', Production: 'Produzione', Sound: 'Musica', Camera: 'Fotografia', Editing: 'Montaggio' };
 
 export default function PersonPage() {
@@ -26,7 +33,7 @@ export default function PersonPage() {
     const seen = new Map<string, MediaSummary>();
     for (const c of src) {
       const k = `${c.media_type}-${c.id}`;
-      if (!seen.has(k) && c.poster_path && !(c.media_type === 'tv' && /talk|news|reality/i.test(c.character ?? '') )) seen.set(k, c);
+      if (!seen.has(k) && c.poster_path && !isAppearance(c)) seen.set(k, c);
     }
     return [...seen.values()];
   }, [p]);
@@ -34,7 +41,8 @@ export default function PersonPage() {
   if (error) return <div className="page"><ErrorBox error={error} /></div>;
   if (!p) return <div className="page"><div className="person-hero sk" /></div>;
 
-  const known = [...credits].sort((a, b) => (b.popularity ?? 0) * Math.log((b.vote_average ?? 1) + 1) - (a.popularity ?? 0) * Math.log((a.vote_average ?? 1) + 1)).slice(0, 12);
+  // "conosciuto per": i titoli più votati in assoluto, ruoli principali prima
+  const known = [...credits].sort((a, b) => (b.vote_count ?? 0) - (a.vote_count ?? 0)).slice(0, 12);
   const seenByMe = credits.filter((c) => entries[`${c.media_type}:${c.id}`]?.watched || entries[`${c.media_type}:${c.id}`]?.rating);
   const filtered = credits
     .filter((c) => (tab === 'all' ? true : tab === 'seen' ? seenByMe.includes(c) : c.media_type === tab))

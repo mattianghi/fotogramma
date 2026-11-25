@@ -61,7 +61,8 @@ export function useDominantColor(src: string | undefined, fallback = '#ffb547') 
         if (alive) setColor(out);
       } catch { /* canvas "tainted": resta il fallback */ }
     };
-    im.src = src;
+    // parametro extra: evita di riusare dalla cache una copia scaricata senza intestazioni CORS
+    im.src = `${src}${src.includes('?') ? '&' : '?'}cors=1`;
     return () => { alive = false; };
   }, [src, fallback]);
   return color;

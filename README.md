@@ -30,7 +30,16 @@ echo "VITE_TMDB_KEY=la_tua_chiave" > .env.local
 npm run build
 ```
 
-`npm run build` genera la cartella `dist/`: è statica e si pubblica su qualsiasi hosting (Netlify, Vercel, GitHub Pages, Cloudflare Pages).
+`npm run build` genera la cartella `dist/`: è statica e si pubblica su qualsiasi hosting.
+
+### Pubblicazione su GitHub Pages
+
+Il workflow `.github/workflows/deploy.yml` pubblica l'app a ogni push su `main`.
+
+1. In **Settings → Pages**, alla voce **Source**, scegli **GitHub Actions**.
+2. (Facoltativo) In **Settings → Secrets and variables → Actions** aggiungi il secret `TMDB_KEY`: così chi apre l'app non deve inserire una chiave propria.
+
+L'app sarà su `https://<utente>.github.io/fotogramma/`.
 
 ## Tecnologie
 

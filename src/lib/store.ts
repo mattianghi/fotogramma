@@ -58,7 +58,7 @@ export interface FavPerson { id: number; name: string; profile_path: string | nu
 export interface State {
   version: 1;
   apiKey: string;
-  profile: { name: string; handle: string; bio: string; accent: string; createdAt: string };
+  profile: { name: string; handle: string; bio: string; accent: string; createdAt: string; prefer: Kind };
   entries: Record<string, Entry>;
   seasons: Record<string, { rating?: number }>;      // "tv:1:s2"
   episodes: Record<string, EpisodeMark>;              // "tv:1:s2:e5"
@@ -74,7 +74,7 @@ const KEY = 'fotogramma:v1';
 const blank = (): State => ({
   version: 1,
   apiKey: '',
-  profile: { name: '', handle: '', bio: '', accent: '#ffb547', createdAt: new Date().toISOString() },
+  profile: { name: '', handle: '', bio: '', accent: '#ffb547', createdAt: new Date().toISOString(), prefer: 'movie' },
   entries: {},
   seasons: {},
   episodes: {},
@@ -88,7 +88,10 @@ const blank = (): State => ({
 function load(): State {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...blank(), ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      return { ...blank(), ...saved, profile: { ...blank().profile, ...saved.profile } };
+    }
   } catch { /* storage non disponibile */ }
   return blank();
 }
@@ -269,6 +272,17 @@ export const actions = {
 
   removeDiary: (id: string) => setState((s) => ({ ...s, diary: s.diary.filter((d) => d.id !== id) })),
 
+  // sposta una visione in un altro giorno (es. un film visto venerdì e segnato oggi)
+  setDiaryDate: (id: string, date: string) =>
+    setState((s) => {
+      const ev = s.diary.find((d) => d.id === id);
+      if (!ev) return s;
+      const diary = s.diary.map((d) => (d.id === id ? { ...d, date } : d));
+      const e = s.entries[ev.key];
+      const entries = ev.kind === 'movie' && e?.watched ? { ...s.entries, [ev.key]: { ...e, watchedAt: date } } : s.entries;
+      return { ...s, diary, entries };
+    }),
+
   addFriend: (name: string) =>
     setState((s) => (s.friends.some((f) => f.toLowerCase() === name.toLowerCase()) ? s : { ...s, friends: [...s.friends, name] })),
   removeFriend: (name: string) => setState((s) => ({ ...s, friends: s.friends.filter((f) => f !== name) })),
@@ -291,6 +305,6 @@ export const actions = {
       return { ...s, people };
     }),
 
-  importAll: (data: State) => setState(() => ({ ...blank(), ...data })),
+  importAll: (data: State) => setState(() => ({ ...blank(), ...data, profile: { ...blank().profile, ...data.profile } })),
   reset: () => setState(() => blank()),
 };

@@ -14,7 +14,7 @@ export default function Profile() {
   const entries = useStore((s) => s.entries);
   const episodes = useStore((s) => s.episodes);
   const people = useStore((s) => s.people);
-  const [shelf, setShelf] = useState<Shelf>('movie');
+  const [shelf, setShelf] = useState<Shelf>(profile.prefer);
 
   const all = Object.values(entries);
   const favs = useMemo(() => all.filter((e) => e.favorite && (shelf === 'people' ? false : e.type === shelf)).sort((a, b) => (a.favAt ?? 0) - (b.favAt ?? 0)), [entries, shelf]);
@@ -52,18 +52,23 @@ export default function Profile() {
             <span className="avatar-lg" style={{ background: avatarColor(profile.name) }}>{profile.name[0]?.toUpperCase()}</span>
             <div>
               <h1 className="profile-name">{profile.name}</h1>
-              <span className="muted small">@{profile.handle || 'cinefilo'} · {plural(stats.movies, 'film', 'film')} · {plural(stats.shows, 'serie', 'serie')}</span>
+              <span className="muted small">@{profile.handle || 'cinefilo'} · {profile.prefer === 'tv' ? <>{plural(stats.shows, 'serie', 'serie')} · {plural(stats.movies, 'film', 'film')}</> : <>{plural(stats.movies, 'film', 'film')} · {plural(stats.shows, 'serie', 'serie')}</>}</span>
             </div>
             <Link to="/settings" className="icon-btn" aria-label="Impostazioni"><Icon name="settings" size={20} /></Link>
           </div>
         }
-        switcher={<Segmented value={shelf} onChange={setShelf} options={[{ value: 'movie', label: 'Film' }, { value: 'tv', label: 'Serie' }, { value: 'people', label: 'Attori' }]} />}
+        switcher={<Segmented value={shelf} onChange={setShelf} options={[...(profile.prefer === 'tv' ? [{ value: 'tv' as Shelf, label: 'Serie' }, { value: 'movie' as Shelf, label: 'Film' }] : [{ value: 'movie' as Shelf, label: 'Film' }, { value: 'tv' as Shelf, label: 'Serie' }]), { value: 'people', label: 'Attori' }]} />}
       />
       {profile.bio && <p className="profile-bio">{profile.bio}</p>}
 
       <section className="stat-grid">
-        <Stat n={stats.movies} label="film visti" to="/me/movies" />
-        <Stat n={stats.eps} label="episodi visti" to="/me/shows" />
+        {profile.prefer === 'tv' ? <>
+          <Stat n={stats.eps} label="episodi visti" to="/me/shows" />
+          <Stat n={stats.movies} label="film visti" to="/me/movies" />
+        </> : <>
+          <Stat n={stats.movies} label="film visti" to="/me/movies" />
+          <Stat n={stats.eps} label="episodi visti" to="/me/shows" />
+        </>}
         <Stat n={stats.hours} label="ore davanti allo schermo" />
         <Stat n={stats.avg ? fmtRating(Math.round(stats.avg * 10) / 10) : '–'} label="voto medio" to="/me/rated" star />
       </section>

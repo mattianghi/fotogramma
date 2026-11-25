@@ -11,13 +11,14 @@ const asSummary = (e: Entry): MediaSummary => ({ id: e.id, media_type: e.type, t
 
 export default function Home() {
   const name = useStore((s) => s.profile.name);
+  const prefer = useStore((s) => s.profile.prefer);
   const entries = useStore((s) => s.entries);
   const episodes = useStore((s) => s.episodes);
   const trending = useAsync(() => api.trending('all', 'week'), []);
   const hour = new Date().getHours();
   const greet = hour < 6 ? 'Notte da maratona' : hour < 13 ? 'Buongiorno' : hour < 18 ? 'Buon pomeriggio' : 'Buonasera';
 
-  const watchlist = useMemo(() => Object.values(entries).filter((e) => e.watchlist).sort((a, b) => b.updatedAt - a.updatedAt), [entries]);
+  const watchlist = useMemo(() => Object.values(entries).filter((e) => e.watchlist).sort((a, b) => Number(b.type === prefer) - Number(a.type === prefer) || b.updatedAt - a.updatedAt), [entries, prefer]);
   const continuing = useMemo(() => {
     const last = new Map<number, string>();
     for (const [k, v] of Object.entries(episodes)) {
@@ -29,7 +30,9 @@ export default function Home() {
   }, [episodes, entries]);
   const seedFav = useMemo(() => Object.values(entries).filter((e) => (e.rating ?? 0) >= 4 || e.favorite).sort((a, b) => (b.rating ?? 4.5) - (a.rating ?? 4.5) || b.updatedAt - a.updatedAt)[0], [entries]);
 
-  const heroes = (trending.data?.results ?? []).filter((m) => m.backdrop_path && m.media_type !== 'person').slice(0, 6);
+  // in testa i titoli del tipo preferito (film o serie)
+  const heroes = (trending.data?.results ?? []).filter((m) => m.backdrop_path && m.media_type !== 'person')
+    .sort((a, b) => Number(b.media_type === prefer) - Number(a.media_type === prefer)).slice(0, 6);
 
   return (
     <div className="page home">
@@ -51,11 +54,19 @@ export default function Home() {
       )}
       {seedFav && <Because e={seedFav} />}
       <Section title="Di tendenza questa settimana" kicker="Ovunque" load={() => api.trending('all', 'week')} ranked />
-      <Section title="Al cinema" kicker="In sala ora" load={api.nowPlaying} />
-      <Section title="Serie del momento" kicker="Le più seguite" load={() => api.trending('tv', 'week')} />
+      {prefer === 'tv' ? <>
+        <Section title="Serie del momento" kicker="Le più seguite" load={() => api.trending('tv', 'week')} />
+        <Section title="In onda ora" kicker="Nuovi episodi" load={api.onAir} />
+        <Section title="Al cinema" kicker="In sala ora" load={api.nowPlaying} />
+      </> : <>
+        <Section title="Al cinema" kicker="In sala ora" load={api.nowPlaying} />
+        <Section title="Film del momento" kicker="I più visti" load={() => api.trending('movie', 'week')} />
+        <Section title="Serie del momento" kicker="Le più seguite" load={() => api.trending('tv', 'week')} />
+      </>}
       <PeopleSection />
-      <Section title="Film più amati di sempre" kicker="Classici" load={() => api.topRated('movie')} />
-      <Section title="Serie più amate di sempre" kicker="Classici" load={() => api.topRated('tv')} />
+      {(prefer === 'tv' ? ['tv', 'movie'] as const : ['movie', 'tv'] as const).map((t) => (
+        <Section key={t} title={t === 'tv' ? 'Serie più amate di sempre' : 'Film più amati di sempre'} kicker="Classici" load={() => api.topRated(t)} />
+      ))}
       <footer className="credit"><span className="tmdb-badge">TMDB</span> Dati e immagini da TMDB. Non approvato né certificato da TMDB.</footer>
     </div>
   );

@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { actions, useStore } from '../lib/store';
+import { actions, Kind, useStore } from '../lib/store';
 import { activeKey, verifyKey } from '../lib/tmdb';
 import { Icon } from '../components/Icon';
 
 export default function Onboarding() {
   const hasKey = useStore((s) => !!s.apiKey) || !!activeKey();
   const name = useStore((s) => s.profile.name);
-  const [step, setStep] = useState<0 | 1 | 2>(name ? 2 : 0);
+  // 0 benvenuto · 1 nome · 2 preferenza · 3 chiave TMDB (solo se non inclusa nell'app)
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(name ? 3 : 0);
   const [n, setN] = useState(name);
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const total = hasKey ? 2 : 3;
+
+  const choose = (prefer: Kind) => {
+    setStep(3);
+    actions.setProfile({ name: n.trim(), handle: n.trim().toLowerCase().replace(/\s+/g, ''), prefer });
+  };
 
   const saveKey = async () => {
     setBusy(true); setErr('');
@@ -33,23 +40,42 @@ export default function Onboarding() {
           </>
         )}
         {step === 1 && (
-          <form onSubmit={(e) => { e.preventDefault(); if (!n.trim()) return; actions.setProfile({ name: n.trim(), handle: n.trim().toLowerCase().replace(/\s+/g, '') }); setStep(hasKey ? 2 : 2); }}>
-            <span className="kicker">1 di 2</span>
+          <form onSubmit={(e) => { e.preventDefault(); if (n.trim()) setStep(2); }}>
+            <span className="kicker">1 di {total}</span>
             <h1 className="display small">Come ti chiami?</h1>
             <p className="lede">Lo vedranno i tuoi amici quando gli consigli qualcosa.</p>
             <input className="field big" autoFocus placeholder="Il tuo nome" value={n} onChange={(e) => setN(e.target.value)} maxLength={30} />
             <button className="btn primary wide" disabled={!n.trim()}>Continua</button>
           </form>
         )}
-        {step === 2 && !hasKey && (
+        {step === 2 && (
+          <div>
+            <span className="kicker">2 di {total}</span>
+            <h1 className="display small">Cosa guardi di più, {n.trim()}?</h1>
+            <p className="lede">Metteremo in primo piano quello che ami. Puoi cambiarlo quando vuoi dalle impostazioni.</p>
+            <div className="prefer-grid">
+              <button className="prefer-card" onClick={() => choose('movie')}>
+                <span className="prefer-emoji">🎬</span>
+                <strong>Film</strong>
+                <span>Sala, classici, maratone di registi</span>
+              </button>
+              <button className="prefer-card" onClick={() => choose('tv')}>
+                <span className="prefer-emoji">📺</span>
+                <strong>Serie TV</strong>
+                <span>Stagioni, episodi, binge-watching</span>
+              </button>
+            </div>
+          </div>
+        )}
+        {step === 3 && !hasKey && (
           <form onSubmit={(e) => { e.preventDefault(); saveKey(); }}>
-            <span className="kicker">2 di 2</span>
+            <span className="kicker">3 di 3</span>
             <h1 className="display small">Colleghiamo il catalogo</h1>
             <p className="lede">Locandine, trame, cast ed episodi arrivano da <b>TMDB</b>, il database di cinema più completo. Serve una chiave gratuita:</p>
             <ol className="steps">
               <li>Crea un account su <a href="https://www.themoviedb.org/signup" target="_blank" rel="noreferrer">themoviedb.org</a></li>
               <li>Vai in <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">Impostazioni → API</a> e richiedi una chiave (uso personale)</li>
-              <li>Copia la <b>API Key</b> oppure il <b>token di lettura</b> e incollalo qui</li>
+              <li>Copia la <b>API Key</b> e incollala qui</li>
             </ol>
             <input className="field" placeholder="Incolla qui la chiave TMDB" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" spellCheck={false} />
             {err && <p className="err">{err}</p>}

@@ -28,6 +28,7 @@ const paths: Record<string, string> = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-13v4.5l3 2',
   download: 'M12 3v12M7 10l5 5 5-5M5 21h14',
   upload: 'M12 15V3M7 8l5-5 5 5M5 21h14',
+  calendar: 'M4 6h16v15H4zM4 10.5h16M8.5 3v5M15.5 3v5',
   inbox: 'M3 13h5l1.5 3h5L16 13h5M5 5h14l2 8v6H3v-6z',
 };
 

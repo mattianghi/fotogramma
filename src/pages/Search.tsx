@@ -4,6 +4,7 @@ import { api, img, MediaSummary, MediaType, titleOf, typeOf, yearOf } from '../l
 import { useAsync } from '../lib/useAsync';
 import { Empty, Img, PersonCard, PosterCard, Segmented } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { useStore } from '../lib/store';
 
 type Tab = 'multi' | 'movie' | 'tv' | 'person';
 const RECENT = 'fotogramma:recent';
@@ -95,7 +96,8 @@ const genreArt: Record<string, string> = {
 };
 
 function Browse({ onPick, onRecent, tab }: { onPick: (g: { t: MediaType; id: number; name: string }) => void; onRecent: (q: string) => void; tab: Tab }) {
-  const t: MediaType = tab === 'tv' ? 'tv' : 'movie';
+  const prefer = useStore((s) => s.profile.prefer);
+  const t: MediaType = tab === 'tv' ? 'tv' : tab === 'movie' ? 'movie' : prefer;
   const { data } = useAsync(() => api.genres(t), [t]);
   const recent: string[] = (() => { try { return JSON.parse(localStorage.getItem(RECENT) ?? '[]'); } catch { return []; } })();
   return (

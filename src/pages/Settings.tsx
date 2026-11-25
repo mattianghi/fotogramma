@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { actions, getState, State, useStore } from '../lib/store';
 import { verifyKey } from '../lib/tmdb';
 import { BackButton } from '../components/Detail';
-import { toast } from '../components/ui';
+import { Segmented, toast } from '../components/ui';
 import { Icon } from '../components/Icon';
 
 export default function Settings() {
@@ -41,6 +41,10 @@ export default function Settings() {
         <label>Nome<input className="field" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} /></label>
         <label>Nome utente<input className="field" value={handle} onChange={(e) => setHandle(e.target.value.replace(/[^a-z0-9_.]/gi, '').toLowerCase())} maxLength={24} /></label>
         <label>Bio<textarea className="field" rows={2} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} placeholder="Es. Nolan, Kubrick e maratone di serie coreane." /></label>
+        <label>Cosa guardi di più?</label>
+        <Segmented value={profile.prefer} onChange={(v) => { actions.setProfile({ prefer: v }); toast(v === 'tv' ? 'Prima le serie TV' : 'Prima i film'); }}
+          options={[{ value: 'movie', label: '🎬 Prima i film' }, { value: 'tv', label: '📺 Prima le serie' }]} />
+        <span className="muted small">Decide cosa vedi per primo in home, nel Pantheon e nelle statistiche.</span>
         <button className="btn primary" disabled={!name.trim()} onClick={() => { actions.setProfile({ name: name.trim(), handle, bio: bio.trim() }); toast('Profilo aggiornato'); }}>Salva profilo</button>
       </section>
 

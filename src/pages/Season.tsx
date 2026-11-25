@@ -84,7 +84,11 @@ export default function SeasonPage() {
       </div>
 
       <RateSheet open={rateSeason} onClose={() => setRateSeason(false)} title={season.name} subtitle={titleOf(t)} value={sRating} withReview={false}
-        onSave={(r) => { actions.rateSeason(seed, n, r); toast(r ? `Stagione valutata ${fmtRating(r)} ★` : 'Valutazione rimossa'); }} />
+        onSave={(r) => {
+          const aired = eps.filter((e) => e.air_date && new Date(e.air_date) <= new Date()).map((e) => ({ n: e.episode_number, name: e.name, runtime: e.runtime ?? undefined }));
+          actions.rateSeason(seed, n, r, aired);
+          toast(r ? `Stagione valutata ${fmtRating(r)} ★ · segnata come vista` : 'Valutazione rimossa');
+        }} />
       {rateEp && (
         <RateSheet open onClose={() => setRateEp(null)} title={rateEp.name} subtitle={`${titleOf(t)} · S${n} E${rateEp.episode_number}`} withReview={false}
           value={marks[episodeKey(id, n, rateEp.episode_number)]?.rating}

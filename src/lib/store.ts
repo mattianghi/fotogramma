@@ -172,10 +172,11 @@ export const actions = {
     setState((s) => {
       const prev = s.entries[entryKey(seed.type, seed.id)];
       let next = upsert(s, seed, { rating });
-      // valutare un film implica averlo visto
-      if (rating && seed.type === 'movie' && !prev?.watched) {
-        next = upsert(next, seed, { watched: true, watchedAt: new Date().toISOString(), watchlist: false });
-        next = logEvent(next, { key: entryKey(seed.type, seed.id), date: new Date().toISOString(), kind: 'movie', rating });
+      // dare un voto implica averlo visto: film e serie vengono segnati come visti
+      if (rating && !prev?.watched) {
+        const now = new Date().toISOString();
+        next = upsert(next, seed, { watched: true, watchedAt: now, watchlist: false });
+        next = logEvent(next, { key: entryKey(seed.type, seed.id), date: now, kind: seed.type === 'movie' ? 'movie' : 'show', rating });
       } else if (rating) {
         const k = entryKey(seed.type, seed.id);
         const last = next.diary.find((d) => d.key === k && (d.kind === 'movie' || d.kind === 'show'));
@@ -223,10 +224,20 @@ export const actions = {
     });
   },
 
-  rateSeason: (seed: EntrySeed, season: number, rating: number | undefined) =>
+  // eps: episodi già usciti della stagione; con un voto vengono segnati tutti come visti
+  rateSeason: (seed: EntrySeed, season: number, rating: number | undefined, eps: { n: number; name: string; runtime?: number }[] = []) =>
     setState((s) => {
-      let next = upsert(s, seed, {});
+      let next = upsert(s, seed, rating ? { watchlist: false } : {});
       next = { ...next, seasons: { ...next.seasons, [seasonKey(seed.id, season)]: { rating } } };
+      if (rating && eps.length) {
+        const now = new Date().toISOString();
+        const episodes = { ...next.episodes };
+        for (const e of eps) {
+          const k = episodeKey(seed.id, season, e.n);
+          if (!episodes[k]?.watchedAt) episodes[k] = { ...episodes[k], watchedAt: now, name: e.name, runtime: e.runtime };
+        }
+        next = { ...next, episodes };
+      }
       if (rating) next = logEvent(next, { key: entryKey('tv', seed.id), date: new Date().toISOString(), kind: 'season', label: `Stagione ${season}`, rating });
       return next;
     }),

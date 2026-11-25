@@ -45,7 +45,10 @@ export function MediaActions({ seed, accent }: { seed: EntrySeed; accent: string
       </button>
 
       <RateSheet open={rateOpen} onClose={() => setRateOpen(false)} title={seed.title} value={e?.rating} review={e?.review}
-        onSave={(r, text) => { actions.rate(seed, r); actions.setReview(seed, text); toast(r ? `Valutato ${fmtRating(r)} ★` : 'Valutazione rimossa'); }} />
+        onSave={(r, text) => {
+          actions.rate(seed, r); actions.setReview(seed, text);
+          toast(!r ? 'Valutazione rimossa' : e?.watched ? `Valutato ${fmtRating(r)} ★` : `Valutato ${fmtRating(r)} ★ · segnato come visto`);
+        }} />
       <RecommendSheet open={recOpen} onClose={() => setRecOpen(false)} seed={seed} rating={e?.rating} />
     </>
   );

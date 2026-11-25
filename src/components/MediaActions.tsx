@@ -3,9 +3,12 @@ import { useState } from 'react';
 import { Icon } from './Icon';
 import { Sheet, StarInput, Stars, ratingWords, toast } from './ui';
 import { actions, entryKey, EntrySeed, useStore, uid } from '../lib/store';
-import { encodeRec, fmtRating, recLink } from '../lib/util';
+import { encodeRec, fmtDate, fmtRating, initial, recLink } from '../lib/util';
+import { isReleased } from '../lib/tmdb';
 
-export function MediaActions({ seed, accent }: { seed: EntrySeed; accent: string }) {
+// releaseDate: data di uscita (film) o prima messa in onda (serie); se futura non si può segnare visto né votare
+export function MediaActions({ seed, accent, releaseDate }: { seed: EntrySeed; accent: string; releaseDate?: string | null }) {
+  const released = isReleased(releaseDate);
   const e = useStore((s) => s.entries[entryKey(seed.type, seed.id)]);
   const [rateOpen, setRateOpen] = useState(false);
   const [recOpen, setRecOpen] = useState(false);
@@ -14,7 +17,7 @@ export function MediaActions({ seed, accent }: { seed: EntrySeed; accent: string
   return (
     <>
       <div className="actions" style={{ ['--accent' as string]: accent }}>
-        <button className={`action ${e?.watched ? 'is-on' : ''}`} onClick={() => { actions.toggleWatched(seed); toast(e?.watched ? 'Rimosso dai visti' : isTv ? 'Serie segnata come vista' : 'Aggiunto ai film visti'); }}>
+        <button className={`action ${e?.watched ? 'is-on' : ''}`} disabled={!released && !e?.watched} onClick={() => { actions.toggleWatched(seed); toast(e?.watched ? 'Rimosso dai visti' : isTv ? 'Serie segnata come vista' : 'Aggiunto ai film visti'); }}>
           <Icon name={e?.watched ? 'check' : 'eye'} size={22} strokeWidth={e?.watched ? 2.6 : 1.8} />
           <span>{e?.watched ? 'Visto' : isTv ? 'Vista' : 'Visto?'}</span>
         </button>
@@ -32,6 +35,15 @@ export function MediaActions({ seed, accent }: { seed: EntrySeed; accent: string
         </button>
       </div>
 
+      {!released && !e?.rating ? (
+        <div className="rate-card is-upcoming" style={{ ['--accent' as string]: accent }}>
+          <div>
+            <span className="kicker">{isTv ? 'In arrivo' : 'In uscita'}</span>
+            <div className="rate-card-row"><Icon name="calendar" size={20} /><span className="rate-card-num">{releaseDate ? `${isTv ? 'Debutta' : 'Esce'} il ${fmtDate(releaseDate)}` : 'Data di uscita non ancora annunciata'}</span></div>
+            <p className="muted small">Mettilo in “Da vedere”: potrai votarlo dopo averlo visto.</p>
+          </div>
+        </div>
+      ) : (
       <button className="rate-card" onClick={() => setRateOpen(true)} style={{ ['--accent' as string]: accent }}>
         <div>
           <span className="kicker">{isTv ? 'La tua valutazione della serie' : 'La tua valutazione'}</span>
@@ -43,6 +55,7 @@ export function MediaActions({ seed, accent }: { seed: EntrySeed; accent: string
         </div>
         <Icon name="chevron" size={18} />
       </button>
+      )}
 
       <RateSheet open={rateOpen} onClose={() => setRateOpen(false)} title={seed.title} value={e?.rating} review={e?.review}
         onSave={(r, text) => {
@@ -120,7 +133,7 @@ export function RecommendSheet({ open, onClose, seed, rating }: { open: boolean;
         <div className="chips">
           {friends.map((f) => (
             <button key={f} className={`chip ${picked.includes(f) ? 'is-on' : ''}`} onClick={() => setPicked((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]))}>
-              <span className="avatar-xs" style={{ background: avatarColor(f) }}>{f[0]?.toUpperCase()}</span>{f}
+              <span className="avatar-xs" style={{ background: avatarColor(f) }}>{initial(f)}</span>{f}
             </button>
           ))}
           <form className="chip chip-input" onSubmit={(e) => { e.preventDefault(); addFriend(); }}>

@@ -651,3 +651,14 @@ a.stat:hover { background: var(--surface-2); }
 .prefer-emoji { font-size: 38px; margin-bottom: 8px; filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
 .prefer-card strong { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1; }
 .prefer-card span:last-child { font-size: 13px; color: var(--text-2); }
+
+/* stati aggiunti dopo il collaudo */
+.rate-card.is-upcoming { cursor: default; }
+.rate-card.is-upcoming .rate-card-row { color: var(--text); }
+.rate-card.is-upcoming p { margin: 6px 0 0; }
+.home-error { padding-top: calc(env(safe-area-inset-top) + 40px); }
+.empty .retry { margin-top: 16px; }
+.friend-manage { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px var(--gutter) 14px; padding: 10px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); font-size: 14px; color: var(--text-2); }
+.friend-manage b { color: var(--text); }
+.link-btn.danger { color: var(--danger); margin: 0; }
+.action:disabled { opacity: .35; }

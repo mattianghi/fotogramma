@@ -3,11 +3,18 @@ import { actions, Kind, useStore } from '../lib/store';
 import { activeKey, verifyKey } from '../lib/tmdb';
 import { Icon } from '../components/Icon';
 
+// "Zoë Rossi 😎" → "zoerossi"
+export const toHandle = (name: string) =>
+  name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9_.]/g, '').slice(0, 24) || 'cinefilo';
+
 export default function Onboarding() {
   const hasKey = useStore((s) => !!s.apiKey) || !!activeKey();
   const name = useStore((s) => s.profile.name);
   // 0 benvenuto · 1 nome · 2 preferenza · 3 chiave TMDB (solo se non inclusa nell'app)
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(name ? 3 : 0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(() => {
+    if (name) return 3;
+    try { return sessionStorage.getItem('fotogramma:skipWelcome') ? 1 : 0; } catch { return 0; }
+  });
   const [n, setN] = useState(name);
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
@@ -16,7 +23,7 @@ export default function Onboarding() {
 
   const choose = (prefer: Kind) => {
     setStep(3);
-    actions.setProfile({ name: n.trim(), handle: n.trim().toLowerCase().replace(/\s+/g, ''), prefer });
+    actions.setProfile({ name: n.trim(), handle: toHandle(n), prefer });
   };
 
   const saveKey = async () => {

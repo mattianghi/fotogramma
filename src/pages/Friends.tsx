@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { actions, useStore } from '../lib/store';
 import { img } from '../lib/tmdb';
-import { fmtDate, fmtRating } from '../lib/util';
+import { fmtDate, fmtRating, initial } from '../lib/util';
 import { Empty, Img, Segmented, toast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { avatarColor } from '../components/MediaActions';
@@ -32,7 +32,7 @@ export default function Friends() {
           const n = inbox.filter((r) => r.from === f).length;
           return (
             <button key={f} className={`friend-bubble ${who === f ? 'is-on' : ''}`} onClick={() => setWho(who === f ? null : f)}>
-              <span className="avatar-md" style={{ background: avatarColor(f) }}>{f[0]?.toUpperCase()}{n > 0 && <i>{n}</i>}</span>
+              <span className="avatar-md" style={{ background: avatarColor(f) }}>{initial(f)}{n > 0 && <i>{n}</i>}</span>
               <span>{f}</span>
             </button>
           );
@@ -41,6 +41,15 @@ export default function Friends() {
           <input placeholder="+ Amico" value={name} onChange={(e) => setName(e.target.value)} maxLength={24} />
         </form>
       </section>
+
+      {who && (
+        <div className="friend-manage">
+          <span>Consigli con <b>{who}</b></span>
+          <button className="link-btn danger" onClick={() => { if (confirm(`Rimuovere ${who} dagli amici? I consigli già ricevuti restano.`)) { actions.removeFriend(who); setWho(null); toast(`${who} rimosso`); } }} aria-label={`Rimuovi ${who} dagli amici`}>
+            <Icon name="trash" size={14} /> Rimuovi
+          </button>
+        </div>
+      )}
 
       <Segmented value={tab} onChange={setTab} options={[
         { value: 'in', label: <>Ricevuti {inbox.length > 0 && <b className="count">{inList.length}</b>}</> },
@@ -58,7 +67,7 @@ export default function Friends() {
                 <div className="rec-bg"><Img src={img.backdrop(r.backdrop ?? null, 'w780')} alt="" /></div>
                 <Link to={`/${r.type}/${r.mediaId}`} className="rec-poster" onClick={() => actions.markRecSeen(r.id)}><Img src={img.poster(r.poster, 'w342')} alt={r.title} /></Link>
                 <div className="rec-body">
-                  <span className="rec-from"><span className="avatar-xs" style={{ background: avatarColor(r.from) }}>{r.from[0]?.toUpperCase()}</span><b>{r.from}</b> · {fmtDate(r.date, { day: 'numeric', month: 'short' })}</span>
+                  <span className="rec-from"><span className="avatar-xs" style={{ background: avatarColor(r.from) }}>{initial(r.from)}</span><b>{r.from}</b> · {fmtDate(r.date, { day: 'numeric', month: 'short' })}</span>
                   <h3>{r.title} <small>{r.year}</small></h3>
                   {r.rating && <span className="rec-rating"><Icon name="star" size={12} fill strokeWidth={0} /> {fmtRating(r.rating)} per {r.from}</span>}
                   {r.note && <p>“{r.note}”</p>}

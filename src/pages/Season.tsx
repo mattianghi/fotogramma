@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, Episode, img, titleOf } from '../lib/tmdb';
+import { api, Episode, img, isReleased, titleOf } from '../lib/tmdb';
 import { useAsync } from '../lib/useAsync';
 import { fmtDate, fmtRating, seedFromTv, useDominantColor } from '../lib/util';
 import { BackButton } from '../components/Detail';
@@ -26,7 +26,8 @@ export default function SeasonPage() {
   const seed = seedFromTv(t);
   const eps = season.episodes;
   const watched = eps.filter((e) => marks[episodeKey(id, n, e.episode_number)]?.watchedAt).length;
-  const all = watched === eps.length && eps.length > 0;
+  const aired = eps.filter((e) => isReleased(e.air_date));
+  const all = aired.length > 0 && aired.every((e) => marks[episodeKey(id, n, e.episode_number)]?.watchedAt);
   const seasons = t.seasons.filter((s) => s.episode_count > 0).sort((a, b) => (a.season_number || 999) - (b.season_number || 999));
   const guests = Object.values(Object.fromEntries(eps.flatMap((e) => e.guest_stars ?? []).map((g) => [g.id, g]))).filter((g) => g.profile_path).slice(0, 20);
 
@@ -63,8 +64,11 @@ export default function SeasonPage() {
             </div>
             <Icon name="chevron" size={18} />
           </button>
-          <button className={`btn ${all ? 'ghost' : 'primary'} wide`} onClick={() => { actions.markSeason(seed, n, eps.map((e) => ({ n: e.episode_number, name: e.name, runtime: e.runtime ?? undefined })), !all); toast(all ? 'Stagione segnata come non vista' : 'Stagione completata ✓'); }}>
-            <Icon name="check" size={18} strokeWidth={2.4} /> {all ? 'Togli “vista”' : 'Segna tutta la stagione come vista'}
+          <button className={`btn ${all ? 'ghost' : 'primary'} wide`} disabled={!aired.length} onClick={() => {
+            actions.markSeason(seed, n, aired.map((e) => ({ n: e.episode_number, name: e.name, runtime: e.runtime ?? undefined })), !all);
+            toast(all ? 'Stagione segnata come non vista' : aired.length < eps.length ? `${aired.length} episodi usciti segnati come visti` : 'Stagione completata ✓');
+          }}>
+            <Icon name="check" size={18} strokeWidth={2.4} /> {!aired.length ? 'Nessun episodio ancora uscito' : all ? 'Togli “vista”' : aired.length < eps.length ? `Segna i ${aired.length} episodi usciti come visti` : 'Segna tutta la stagione come vista'}
           </button>
         </div>
 
@@ -85,8 +89,7 @@ export default function SeasonPage() {
 
       <RateSheet open={rateSeason} onClose={() => setRateSeason(false)} title={season.name} subtitle={titleOf(t)} value={sRating} withReview={false}
         onSave={(r) => {
-          const aired = eps.filter((e) => e.air_date && new Date(e.air_date) <= new Date()).map((e) => ({ n: e.episode_number, name: e.name, runtime: e.runtime ?? undefined }));
-          actions.rateSeason(seed, n, r, aired);
+          actions.rateSeason(seed, n, r, aired.map((e) => ({ n: e.episode_number, name: e.name, runtime: e.runtime ?? undefined })));
           toast(r ? `Stagione valutata ${fmtRating(r)} ★ · segnata come vista` : 'Valutazione rimossa');
         }} />
       {rateEp && (
@@ -101,7 +104,7 @@ export default function SeasonPage() {
 function EpisodeRow({ e, id, seed, onRate }: { e: Episode; id: number; seed: EntrySeed; onRate: () => void }) {
   const mark = useStore((s) => s.episodes[episodeKey(id, e.season_number, e.episode_number)]);
   const [open, setOpen] = useState(false);
-  const future = e.air_date ? new Date(e.air_date) > new Date() : true;
+  const future = !isReleased(e.air_date);
   return (
     <li className={`episode ${mark?.watchedAt ? 'is-watched' : ''}`}>
       <div className="episode-still" onClick={() => setOpen(!open)}>

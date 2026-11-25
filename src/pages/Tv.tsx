@@ -38,7 +38,7 @@ export default function TvPage() {
         {t.tagline && <p className="tagline">{t.tagline}</p>}
       </DetailHero>
       <div className="detail-body">
-        <MediaActions seed={seed} accent={accent} />
+        <MediaActions seed={seed} accent={accent} releaseDate={t.first_air_date} />
         {totalWatched > 0 && (
           <div className="progress-card">
             <div className="progress-top"><span className="kicker">I tuoi progressi</span><strong>{totalWatched}/{total} episodi · {pct}%</strong></div>

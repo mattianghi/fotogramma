@@ -96,10 +96,10 @@ export async function tmdb<T>(path: string, params: Record<string, string | numb
   const p = fetch(url, { headers }).then(async (r) => {
     if (!r.ok) {
       cache.delete(cacheKey);
-      throw new TmdbError(r.status === 401 ? 'Chiave TMDB non valida' : `Errore TMDB (${r.status})`, r.status);
+      throw new TmdbError(r.status === 401 ? 'Chiave TMDB non valida' : r.status === 404 ? 'Non trovato' : `Errore TMDB (${r.status})`, r.status);
     }
     return r.json() as Promise<T>;
-  }, (e) => { cache.delete(cacheKey); throw e; });
+  }, () => { cache.delete(cacheKey); throw new TmdbError('Connessione assente', 0); });
   if (!keyOverride) cache.set(cacheKey, p);
   return p;
 }
@@ -113,6 +113,10 @@ export const img = {
   still: (p: string | null | undefined, size: 'w300' | 'w780' = 'w300') => (p ? `${IMG}${size}${p}` : ''),
   logo: (p: string | null | undefined) => (p ? `${IMG}w92${p}` : ''),
 };
+
+export const today = () => new Date().toISOString().slice(0, 10);
+// un titolo è "uscito" se ha una data di uscita non futura
+export const isReleased = (date?: string | null) => !!date && date <= today();
 
 export const titleOf = (m: { title?: string; name?: string }) => m.title || m.name || '';
 export const dateOf = (m: { release_date?: string; first_air_date?: string }) => m.release_date || m.first_air_date || '';

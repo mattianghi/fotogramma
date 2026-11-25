@@ -85,6 +85,9 @@ function vivid(r: number, g: number, b: number) {
 }
 
 // ---- formattazione ----
+// prima "lettera" del nome, anche se è un'emoji (che occupa due caratteri)
+export const initial = (name: string) => (Array.from(name.trim())[0] ?? '?').toUpperCase();
+
 export const fmtRuntime = (min?: number | null) => {
   if (!min) return '';
   const h = Math.floor(min / 60), m = min % 60;

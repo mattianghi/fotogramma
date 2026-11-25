@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { actions, Entry, FavPerson, useStore } from '../lib/store';
 import { img } from '../lib/tmdb';
-import { fmtRating, plural, useDominantColor } from '../lib/util';
+import { fmtRating, plural, useDominantColor, initial } from '../lib/util';
 import { Empty, Img, Segmented, Stars } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { avatarColor } from '../components/MediaActions';
@@ -49,7 +49,7 @@ export default function Profile() {
       <Pantheon items={favs} people={favPeople} shelf={shelf} name={profile.name}
         header={
           <div className="profile-id">
-            <span className="avatar-lg" style={{ background: avatarColor(profile.name) }}>{profile.name[0]?.toUpperCase()}</span>
+            <span className="avatar-lg" style={{ background: avatarColor(profile.name) }}>{initial(profile.name)}</span>
             <div>
               <h1 className="profile-name">{profile.name}</h1>
               <span className="muted small">@{profile.handle || 'cinefilo'} · {profile.prefer === 'tv' ? <>{plural(stats.shows, 'serie', 'serie')} · {plural(stats.movies, 'film', 'film')}</> : <>{plural(stats.movies, 'film', 'film')} · {plural(stats.shows, 'serie', 'serie')}</>}</span>

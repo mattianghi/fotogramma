@@ -25,13 +25,15 @@ export default function Search() {
   const res = useAsync(async () => (debounced ? api.search(debounced, tab) : null), [debounced, tab]);
   const results = useMemo(() => (res.data?.results ?? []).map((m) => ({ ...m, media_type: m.media_type ?? (tab === 'multi' ? undefined : tab) })), [res.data, tab]);
 
-  useEffect(() => {
-    if (!debounced || !results.length) return;
+  // salva la ricerca solo quando la usi davvero (apri un risultato o premi Invio), non lettera per lettera
+  const saveRecent = () => {
+    const term = q.trim();
+    if (!term) return;
     try {
       const prev: string[] = JSON.parse(localStorage.getItem(RECENT) ?? '[]');
-      localStorage.setItem(RECENT, JSON.stringify([debounced, ...prev.filter((x) => x.toLowerCase() !== debounced.toLowerCase())].slice(0, 8)));
+      localStorage.setItem(RECENT, JSON.stringify([term, ...prev.filter((x) => x.toLowerCase() !== term.toLowerCase())].slice(0, 8)));
     } catch { /* ignora */ }
-  }, [debounced, results.length]);
+  };
 
   const people = results.filter((m) => typeOf(m) === 'person');
   const media = results.filter((m) => typeOf(m) !== 'person');
@@ -43,7 +45,8 @@ export default function Search() {
         <h1 className="display small">Cerca</h1>
         <label className="search-box">
           <Icon name="search" size={20} />
-          <input autoFocus placeholder="Film, serie TV, attori…" value={q} onChange={(e) => { setQ(e.target.value); setGenre(null); }} enterKeyHint="search" />
+          <input autoFocus placeholder="Film, serie TV, attori…" value={q} onChange={(e) => { setQ(e.target.value); setGenre(null); }} enterKeyHint="search"
+            onKeyDown={(e) => { if (e.key === 'Enter') { saveRecent(); (e.target as HTMLInputElement).blur(); } }} />
           {q && <button onClick={() => setQ('')} aria-label="Cancella"><Icon name="close" size={16} /></button>}
         </label>
         <Segmented value={tab} onChange={setTab} options={[
@@ -57,6 +60,7 @@ export default function Search() {
       {debounced && res.loading && !res.data && <div className="grid">{Array.from({ length: 8 }, (_, i) => <div key={i} className="poster-card"><div className="poster-frame sk" /></div>)}</div>}
       {debounced && res.data && !results.length && <Empty icon="search" title="Nessun risultato">Prova con il titolo originale o un'altra parola.</Empty>}
 
+      <div onClickCapture={(e) => { if ((e.target as Element).closest('a')) saveRecent(); }}>
       {top && <TopResult m={top} />}
       {(tab === 'person' || (tab === 'multi' && people.length > 0)) && (
         <section className="block">
@@ -72,6 +76,7 @@ export default function Search() {
           <div className="grid">{media.filter((m) => m !== top).map((m) => <PosterCard key={`${m.media_type}-${m.id}`} m={m} />)}</div>
         </section>
       )}
+      </div>
     </div>
   );
 }

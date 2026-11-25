@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, img, MediaSummary, titleOf, typeOf, yearOf } from '../lib/tmdb';
 import { useAsync } from '../lib/useAsync';
 import { useStore, Entry } from '../lib/store';
-import { PersonCard, PosterCard, Rail, RailSkeleton, Img, Stars } from '../components/ui';
+import { ErrorBox, PersonCard, PosterCard, Rail, RailSkeleton, Img, Stars } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { tmdbScore, useDominantColor } from '../lib/util';
 
@@ -36,7 +36,7 @@ export default function Home() {
 
   return (
     <div className="page home">
-      {heroes.length ? <Hero items={heroes} /> : <div className="hero sk" />}
+      {trending.error ? <div className="home-error"><ErrorBox error={trending.error} /></div> : heroes.length ? <Hero items={heroes} /> : <div className="hero sk" />}
       <div className="home-greet">
         <span className="kicker">{greet}, {name}</span>
         <h1 className="display small">Cosa guardiamo stasera?</h1>
@@ -105,7 +105,8 @@ function Hero({ items }: { items: MediaSummary[] }) {
 }
 
 function Section({ title, kicker, load, ranked }: { title: string; kicker?: string; load: () => Promise<{ results: MediaSummary[] }>; ranked?: boolean }) {
-  const { data, loading } = useAsync(load, [title]);
+  const { data, loading, error } = useAsync(load, [title]);
+  if (error) return null;
   if (loading && !data) return <RailSkeleton />;
   const items = (data?.results ?? []).filter((m) => m.poster_path && m.media_type !== 'person');
   if (!items.length) return null;

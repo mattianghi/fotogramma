@@ -1,4 +1,5 @@
 // Mattoni condivisi fra le schede film e serie.
+import { initial } from '../lib/util';
 import { ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
@@ -129,7 +130,7 @@ export function FriendNotes({ type, id }: { type: 'movie' | 'tv'; id: number }) 
     <section className="block friend-notes">
       {recs.map((r) => (
         <div key={r.id} className="friend-note">
-          <span className="avatar-sm" style={{ background: avatarColor(r.from) }}>{r.from[0]?.toUpperCase()}</span>
+          <span className="avatar-sm" style={{ background: avatarColor(r.from) }}>{initial(r.from)}</span>
           <div><strong>{r.from}</strong> te l'ha consigliato{r.rating ? ` · ★ ${r.rating}` : ''}{r.note && <p>“{r.note}”</p>}</div>
         </div>
       ))}

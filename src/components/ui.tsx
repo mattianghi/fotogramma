@@ -186,5 +186,11 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
 }
 
 export function ErrorBox({ error }: { error: Error }) {
-  return <Empty icon="close" title="Qualcosa è andato storto">{error.message}</Empty>;
+  const status = (error as Error & { status?: number }).status;
+  const retry = <button className="btn ghost sm retry" onClick={() => location.reload()}>Riprova</button>;
+  if (status === 0 || !navigator.onLine)
+    return <Empty icon="close" title="Sei offline">Controlla la connessione e riprova. I tuoi voti, il diario e il profilo restano consultabili.<br />{retry}</Empty>;
+  if (status === 404) return <Empty icon="search" title="Non l'abbiamo trovato">Questo titolo o questa persona non esiste più nel catalogo. Prova a cercarlo di nuovo.</Empty>;
+  if (status === 401) return <Empty icon="close" title="Chiave TMDB non valida">Controlla la chiave nelle impostazioni.</Empty>;
+  return <Empty icon="close" title="Qualcosa è andato storto">Il catalogo non risponde in questo momento.<br />{retry}</Empty>;
 }

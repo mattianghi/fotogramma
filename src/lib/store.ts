@@ -35,6 +35,7 @@ export interface DiaryEvent {
   kind: 'movie' | 'show' | 'season' | 'episode';
   label?: string;         // es. "S2 · E5 — Titolo"
   rating?: number;
+  ref?: string;           // cosa è stato visto: "movie:1", "tv:1", "tv:1:s2", "tv:1:s2:e5" (una voce per ref)
 }
 
 export interface Recommendation {
@@ -85,12 +86,30 @@ const blank = (): State => ({
   people: {},
 });
 
+// voci di diario create prima dei "ref": ricava il ref e togli i doppioni (tiene la più recente)
+function legacyRef(d: DiaryEvent): string {
+  if (d.kind === 'movie' || d.kind === 'show') return d.key;
+  const id = d.key.split(':')[1];
+  const ep = d.label?.match(/^S(\d+) · E(\d+)/);
+  if (d.kind === 'episode' && ep) return `tv:${id}:s${ep[1]}:e${ep[2]}`;
+  const se = d.label?.match(/^Stagione (\d+)/);
+  if (d.kind === 'season' && se) return `tv:${id}:s${se[1]}`;
+  return d.id;
+}
+function migrate(st: State): State {
+  if (st.diary.every((d) => d.ref)) return st;
+  const seen = new Set<string>();
+  const diary = [...st.diary].sort((a, b) => b.date.localeCompare(a.date)).map((d) => ({ ...d, ref: d.ref ?? legacyRef(d) }))
+    .filter((d) => (seen.has(d.ref) ? false : (seen.add(d.ref), true)));
+  return { ...st, diary };
+}
+
 function load(): State {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const saved = JSON.parse(raw);
-      return { ...blank(), ...saved, profile: { ...blank().profile, ...saved.profile } };
+      return migrate({ ...blank(), ...saved, profile: { ...blank().profile, ...saved.profile } });
     }
   } catch { /* storage non disponibile */ }
   return blank();
@@ -160,9 +179,17 @@ function pickFresh(seed: EntrySeed): Partial<Entry> {
   return out;
 }
 
-function logEvent(s: State, ev: Omit<DiaryEvent, 'id'>): State {
-  return { ...s, diary: [{ ...ev, id: uid() }, ...s.diary] };
+// una sola voce di diario per ogni cosa vista: se esiste già si aggiorna (voto, etichetta), la data resta
+function logEvent(s: State, ev: Omit<DiaryEvent, 'id'> & { ref: string }): State {
+  const old = s.diary.find((d) => d.ref === ev.ref);
+  if (!old) return { ...s, diary: [{ ...ev, id: uid() }, ...s.diary] };
+  const merged: DiaryEvent = { ...old, kind: ev.kind, label: ev.label ?? old.label, rating: 'rating' in ev ? ev.rating ?? old.rating : old.rating };
+  return { ...s, diary: s.diary.map((d) => (d === old ? merged : d)) };
 }
+const setEventRating = (s: State, ref: string, rating: number | undefined): State =>
+  ({ ...s, diary: s.diary.map((d) => (d.ref === ref ? { ...d, rating } : d)) });
+const dropEvents = (s: State, match: (ref: string) => boolean): State =>
+  ({ ...s, diary: s.diary.filter((d) => !(d.ref && match(d.ref))) });
 
 export const actions = {
   setApiKey: (apiKey: string) => setState((s) => ({ ...s, apiKey })),
@@ -170,23 +197,14 @@ export const actions = {
 
   rate(seed: EntrySeed, rating: number | undefined) {
     setState((s) => {
-      const prev = s.entries[entryKey(seed.type, seed.id)];
+      const key = entryKey(seed.type, seed.id);
+      const prev = s.entries[key];
       let next = upsert(s, seed, { rating });
+      if (!rating) return setEventRating(next, key, undefined);
       // dare un voto implica averlo visto: film e serie vengono segnati come visti
-      if (rating && !prev?.watched) {
-        const now = new Date().toISOString();
-        next = upsert(next, seed, { watched: true, watchedAt: now, watchlist: false });
-        next = logEvent(next, { key: entryKey(seed.type, seed.id), date: now, kind: seed.type === 'movie' ? 'movie' : 'show', rating });
-      } else if (rating) {
-        const k = entryKey(seed.type, seed.id);
-        const last = next.diary.find((d) => d.key === k && (d.kind === 'movie' || d.kind === 'show'));
-        if (last && Date.now() - +new Date(last.date) < 1000 * 60 * 60 * 24) {
-          next = { ...next, diary: next.diary.map((d) => (d === last ? { ...d, rating } : d)) };
-        } else if (seed.type === 'tv') {
-          next = logEvent(next, { key: k, date: new Date().toISOString(), kind: 'show', rating });
-        }
-      }
-      return next;
+      const now = new Date().toISOString();
+      if (!prev?.watched) next = upsert(next, seed, { watched: true, watchedAt: now, watchlist: false });
+      return logEvent(next, { ref: key, key, date: now, kind: seed.type === 'movie' ? 'movie' : 'show', rating });
     });
   },
 
@@ -194,11 +212,12 @@ export const actions = {
 
   toggleWatched(seed: EntrySeed) {
     setState((s) => {
-      const prev = s.entries[entryKey(seed.type, seed.id)];
-      if (prev?.watched) return upsert(s, seed, { watched: false });
+      const key = entryKey(seed.type, seed.id);
+      const prev = s.entries[key];
+      if (prev?.watched) return dropEvents(upsert(s, seed, { watched: false }), (r) => r === key);
       const now = new Date().toISOString();
       const next = upsert(s, seed, { watched: true, watchedAt: now, watchlist: false });
-      return logEvent(next, { key: entryKey(seed.type, seed.id), date: now, kind: seed.type === 'movie' ? 'movie' : 'show', rating: prev?.rating });
+      return logEvent(next, { ref: key, key, date: now, kind: seed.type === 'movie' ? 'movie' : 'show', rating: prev?.rating });
     });
   },
 
@@ -227,30 +246,30 @@ export const actions = {
   // eps: episodi già usciti della stagione; con un voto vengono segnati tutti come visti
   rateSeason: (seed: EntrySeed, season: number, rating: number | undefined, eps: { n: number; name: string; runtime?: number }[] = []) =>
     setState((s) => {
+      const ref = seasonKey(seed.id, season);
       let next = upsert(s, seed, rating ? { watchlist: false } : {});
-      next = { ...next, seasons: { ...next.seasons, [seasonKey(seed.id, season)]: { rating } } };
-      if (rating && eps.length) {
-        const now = new Date().toISOString();
-        const episodes = { ...next.episodes };
-        for (const e of eps) {
-          const k = episodeKey(seed.id, season, e.n);
-          if (!episodes[k]?.watchedAt) episodes[k] = { ...episodes[k], watchedAt: now, name: e.name, runtime: e.runtime };
-        }
-        next = { ...next, episodes };
+      next = { ...next, seasons: { ...next.seasons, [ref]: { rating } } };
+      if (!rating) return setEventRating(next, ref, undefined);
+      const now = new Date().toISOString();
+      const episodes = { ...next.episodes };
+      for (const e of eps) {
+        const k = episodeKey(seed.id, season, e.n);
+        if (!episodes[k]?.watchedAt) episodes[k] = { ...episodes[k], watchedAt: now, name: e.name, runtime: e.runtime };
       }
-      if (rating) next = logEvent(next, { key: entryKey('tv', seed.id), date: new Date().toISOString(), kind: 'season', label: `Stagione ${season}`, rating });
-      return next;
+      next = { ...next, episodes };
+      return logEvent(next, { ref, key: entryKey('tv', seed.id), date: now, kind: 'season', label: `Stagione ${season}`, rating });
     }),
 
   rateEpisode: (seed: EntrySeed, season: number, ep: number, name: string, rating: number | undefined, runtime?: number) =>
     setState((s) => {
       const k = episodeKey(seed.id, season, ep);
       const prev = s.episodes[k];
-      const watchedAt = prev?.watchedAt ?? (rating ? new Date().toISOString() : undefined);
+      const now = new Date().toISOString();
+      const watchedAt = prev?.watchedAt ?? (rating ? now : undefined);
       let next = upsert(s, seed, { watchlist: false });
       next = { ...next, episodes: { ...next.episodes, [k]: { ...prev, rating, watchedAt, name, runtime } } };
-      if (rating) next = logEvent(next, { key: entryKey('tv', seed.id), date: new Date().toISOString(), kind: 'episode', label: `S${season} · E${ep} — ${name}`, rating });
-      return next;
+      if (!rating) return setEventRating(next, k, undefined);
+      return logEvent(next, { ref: k, key: entryKey('tv', seed.id), date: now, kind: 'episode', label: `S${season} · E${ep} — ${name}`, rating });
     }),
 
   toggleEpisode: (seed: EntrySeed, season: number, ep: number, name: string, runtime?: number) =>
@@ -259,16 +278,18 @@ export const actions = {
       const prev = s.episodes[k];
       if (prev?.watchedAt) {
         const { watchedAt: _w, ...rest } = prev;
-        return { ...s, episodes: { ...s.episodes, [k]: rest } };
+        return dropEvents({ ...s, episodes: { ...s.episodes, [k]: rest } }, (r) => r === k);
       }
       const now = new Date().toISOString();
       let next = upsert(s, seed, { watchlist: false });
       next = { ...next, episodes: { ...next.episodes, [k]: { ...prev, watchedAt: now, name, runtime } } };
-      return logEvent(next, { key: entryKey('tv', seed.id), date: now, kind: 'episode', label: `S${season} · E${ep} — ${name}` });
+      return logEvent(next, { ref: k, key: entryKey('tv', seed.id), date: now, kind: 'episode', label: `S${season} · E${ep} — ${name}`, rating: prev?.rating });
     }),
 
+  // eps: solo episodi già usciti
   markSeason: (seed: EntrySeed, season: number, eps: { n: number; name: string; runtime?: number }[], watched: boolean) =>
     setState((s) => {
+      const ref = seasonKey(seed.id, season);
       const episodes = { ...s.episodes };
       const now = new Date().toISOString();
       for (const e of eps) {
@@ -276,9 +297,9 @@ export const actions = {
         if (watched) episodes[k] = { ...episodes[k], watchedAt: episodes[k]?.watchedAt ?? now, name: e.name, runtime: e.runtime };
         else if (episodes[k]) { const { watchedAt: _w, ...rest } = episodes[k]; episodes[k] = rest; }
       }
-      let next = upsert({ ...s, episodes }, seed, { watchlist: false });
-      if (watched) next = logEvent(next, { key: entryKey('tv', seed.id), date: now, kind: 'season', label: `Stagione ${season} completata` });
-      return next;
+      const next = upsert({ ...s, episodes }, seed, { watchlist: false });
+      if (!watched) return dropEvents(next, (r) => r === ref || r.startsWith(`${ref}:`));
+      return logEvent(next, { ref, key: entryKey('tv', seed.id), date: now, kind: 'season', label: `Stagione ${season} completata`, rating: s.seasons[ref]?.rating });
     }),
 
   removeDiary: (id: string) => setState((s) => ({ ...s, diary: s.diary.filter((d) => d.id !== id) })),

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { NavLink, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import { Icon } from './components/Icon';
 import { Toaster } from './components/ui';
 import { useStore } from './lib/store';
@@ -32,7 +32,24 @@ export default function App() {
   const unread = useStore((s) => s.inbox.filter((r) => !r.seen).length);
   const loc = useLocation();
 
-  useEffect(() => { window.scrollTo({ top: 0 }); }, [loc.pathname]);
+  // nuove pagine partono dall'alto; con "indietro" si torna dove si era
+  const navType = useNavigationType();
+  const positions = useRef(new Map<string, number>());
+  useEffect(() => {
+    const save = () => positions.current.set(loc.key, window.scrollY);
+    window.addEventListener('scroll', save, { passive: true });
+    return () => window.removeEventListener('scroll', save);
+  }, [loc.key]);
+  useEffect(() => {
+    if (navType === 'PUSH') { window.scrollTo({ top: 0 }); return; }
+    if (navType !== 'POP') return;
+    const y = positions.current.get(loc.key) ?? 0;
+    let tries = 0, timer = 0;
+    // il contenuto arriva in modo asincrono: riprova finché la pagina è abbastanza lunga
+    const tick = () => { window.scrollTo(0, y); if (Math.abs(window.scrollY - y) > 2 && tries++ < 40) timer = window.setTimeout(tick, 50); };
+    tick();
+    return () => clearTimeout(timer);
+  }, [loc.key, navType]);
 
   // un link di consiglio si apre anche prima dell'onboarding
   if (loc.pathname.startsWith('/r/') && !(hasKey && named)) return <><Routes><Route path="/r/:code" element={<RecLanding />} /></Routes><Toaster /></>;

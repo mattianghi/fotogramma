@@ -35,7 +35,7 @@ export default function MoviePage() {
         {m.tagline && <p className="tagline">{m.tagline}</p>}
       </DetailHero>
       <div className="detail-body">
-        <MediaActions seed={seed} accent={accent} />
+        <MediaActions seed={seed} accent={accent} releaseDate={m.release_date} />
         <FriendNotes type="movie" id={m.id} />
         <Overview text={m.overview ?? ''} fallback={en.data?.overview} />
         <Providers data={m['watch/providers']?.results} />
